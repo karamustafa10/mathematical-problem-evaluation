@@ -1,47 +1,72 @@
-import os
-from openai import OpenAI
+"""
+ChatGPT Model Module for Mathematical Problem Evaluation System.
+
+This module provides an interface to interact with OpenAI's ChatGPT model
+for solving mathematical problems. It handles API communication, response
+generation, and error handling.
+"""
+
+import openai
+import logging
 from typing import Optional
+from utils.config import Config
+
+logger = logging.getLogger(__name__)
 
 class ChatGPTModel:
+    """
+    Interface for interacting with OpenAI's ChatGPT model.
+    
+    This class provides methods to:
+    - Initialize the ChatGPT model with API credentials
+    - Generate responses to mathematical problems
+    - Handle API errors and rate limits
+    """
+
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        """Initialize the ChatGPT model with API credentials."""
+        self.config = Config()
+        self.api_key = self.config.get_api_key('openai')
+        
+        if not self.api_key:
+            logger.warning("OpenAI API key not found. ChatGPT functionality will be disabled.")
+            return
+            
+        openai.api_key = self.api_key
         self.model = "gpt-3.5-turbo"
 
-    def generate_response(self, prompt: str, system_message: Optional[str] = None) -> str:
+    def generate_response(self, question: str) -> Optional[str]:
         """
-        Generate a response using ChatGPT
+        Generate a response to a mathematical problem using ChatGPT.
         
         Args:
-            prompt (str): The input prompt
-            system_message (str, optional): System message to guide the model
+            question: The mathematical problem to solve.
             
         Returns:
-            str: Model's response
+            The model's response as a string, or None if an error occurs.
         """
-        try:
-            if system_message is None:
-                system_message = (
-                    "You are a mathematical problem solver. "
-                    "Please solve the problem step by step, showing your work and reasoning. "
-                    "Make sure to clearly indicate each step of your solution process."
-                )
+        if not self.api_key:
+            logger.error("Cannot generate response: OpenAI API key not configured")
+            return None
 
-            response = self.client.chat.completions.create(
+        try:
+            response = openai.ChatCompletion.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": "You are a mathematical problem solver. "
+                                                "Provide clear, step-by-step solutions and "
+                                                "end with the final answer."},
+                    {"role": "user", "content": question}
                 ],
-                temperature=0.7,
-                max_tokens=1000
+                temperature=0.3,  # Lower temperature for more focused responses
+                max_tokens=500
             )
             
-            return response.choices[0].message.content
-
+            return response.choices[0].message.content.strip()
+            
         except Exception as e:
-            error_message = f"Error in ChatGPT API call: {str(e)}"
-            print(error_message)
-            return f"Error: {error_message}"
+            logger.error(f"Error generating ChatGPT response: {str(e)}")
+            return None
 
 # Example usage
 if __name__ == "__main__":

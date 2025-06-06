@@ -1,60 +1,90 @@
+"""
+Perplexity Model Module for Mathematical Problem Evaluation System.
+
+This module provides an interface to interact with Perplexity's AI model
+for solving mathematical problems. It handles API communication, response
+generation, and error handling.
+"""
+
 import os
 import requests
 from typing import Optional
 import logging
+from utils.config import Config
+
+logger = logging.getLogger(__name__)
 
 class PerplexityModel:
-    def __init__(self):
-        self.api_key = os.getenv("PERPLEXITY_API_KEY")
-        if not self.api_key:
-            raise ValueError("PERPLEXITY_API_KEY environment variable is not set")
-        
-        self.api_url = "https://api.perplexity.ai/chat/completions"
-        self.model = "sonar"  # Using the correct model name from documentation
+    """
+    Interface for interacting with Perplexity's AI model.
+    
+    This class provides methods to:
+    - Initialize the Perplexity model with API credentials
+    - Generate responses to mathematical problems
+    - Handle API errors and rate limits
+    """
 
-    def generate_response(self, prompt: str, system_message: str = None) -> Optional[str]:
+    def __init__(self):
+        """Initialize the Perplexity model with API credentials."""
+        self.config = Config()
+        self.api_key = self.config.get_api_key('perplexity')
+        
+        if not self.api_key:
+            logger.warning("Perplexity API key not found. Perplexity functionality will be disabled.")
+            return
+            
+        self.api_url = "https://api.perplexity.ai/chat/completions"
+        self.model = "pplx-7b-online"
+
+    def generate_response(self, question: str) -> Optional[str]:
         """
-        Generate a response using the Perplexity API
+        Generate a response to a mathematical problem using Perplexity.
         
         Args:
-            prompt (str): The problem prompt
-            system_message (str, optional): System message to guide the model
+            question: The mathematical problem to solve.
             
         Returns:
-            Optional[str]: The model's response or None if an error occurs
+            The model's response as a string, or None if an error occurs.
         """
+        if not self.api_key:
+            logger.error("Cannot generate response: Perplexity API key not configured")
+            return None
+
         try:
+            # Prepare the API request
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json"
             }
             
-            messages = []
-            if system_message:
-                messages.append({"role": "system", "content": system_message})
-            messages.append({"role": "user", "content": prompt})
-            
             data = {
                 "model": self.model,
-                "messages": messages
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a mathematical problem solver. "
+                                 "Provide clear, step-by-step solutions and "
+                                 "end with the final answer."
+                    },
+                    {
+                        "role": "user",
+                        "content": question
+                    }
+                ],
+                "temperature": 0.3,  # Lower temperature for more focused responses
+                "max_tokens": 500
             }
             
+            # Make the API request
             response = requests.post(self.api_url, headers=headers, json=data)
-            response.raise_for_status()
+            response.raise_for_status()  # Raise an exception for bad status codes
             
-            result = response.json()
-            if "choices" not in result or not result["choices"]:
-                logging.error("Unexpected response format from Perplexity API")
-                return "Error: Unexpected response format"
-                
-            return result["choices"][0]["message"]["content"]
+            # Extract and return the response text
+            return response.json()['choices'][0]['message']['content'].strip()
             
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Error in Perplexity API call: {str(e)}")
-            return f"Error: {str(e)}"
         except Exception as e:
-            logging.error(f"Unexpected error in Perplexity API call: {str(e)}")
-            return f"Error: {str(e)}"
+            logger.error(f"Error generating Perplexity response: {str(e)}")
+            return None
 
 # Example usage
 if __name__ == "__main__":

@@ -1,3 +1,11 @@
+"""
+Main module for the Mathematical Problem Evaluation System.
+
+This module serves as the entry point for the application, coordinating the evaluation
+of mathematical problems across different AI models (ChatGPT, Gemini, and Perplexity).
+It handles the initialization of models, problem loading, evaluation, and result analysis.
+"""
+
 from models.chatgpt_model import ChatGPTModel
 from models.gemini_model import GeminiModel
 from models.perplexity_model import PerplexityModel
@@ -10,7 +18,7 @@ import os
 import logging
 from typing import List, Dict, Any
 
-# Configure logging
+# Configure logging with both file and console handlers
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -23,8 +31,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class MathProblemEvaluator:
+    """
+    Main class for evaluating mathematical problems using different AI models.
+    
+    This class coordinates the entire evaluation process, including:
+    - Model initialization
+    - Problem loading
+    - Response generation
+    - Result evaluation
+    - Analysis generation
+    """
+
     def __init__(self):
+        """Initialize the evaluator with all necessary components."""
         self.config = Config()
+        # Initialize all available models
         self.models = {
             'chatgpt': ChatGPTModel(),
             'gemini': GeminiModel(),
@@ -35,13 +56,23 @@ class MathProblemEvaluator:
         self.result_analyzer = ResultAnalyzer()
 
     def evaluate_problems(self, problems: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Evaluate a list of problems using all available models."""
+        """
+        Evaluate a list of problems using all available models.
+        
+        Args:
+            problems: List of problems to evaluate, each containing problem_id, question,
+                     correct_answer, and other metadata.
+        
+        Returns:
+            Dictionary containing evaluation results for each problem.
+        """
         results = {}
         
         for problem in problems:
             problem_id = problem['problem_id']
             logger.info(f"Evaluating problem: {problem_id}")
             
+            # Get responses from all models
             model_responses = {}
             for model_name, model in self.models.items():
                 try:
@@ -51,7 +82,7 @@ class MathProblemEvaluator:
                     logger.error(f"Error with {model_name}: {str(e)}")
                     model_responses[model_name] = None
             
-            # Evaluate responses
+            # Evaluate responses and save results
             evaluation_results = self.evaluator.evaluate_responses(problem, model_responses)
             results[problem_id] = evaluation_results
             
@@ -60,13 +91,31 @@ class MathProblemEvaluator:
         
         return results
 
-    def analyze_results(self, results):
+    def analyze_results(self, results: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Analyze evaluation results and generate insights
+        Analyze evaluation results and generate insights.
+        
+        Args:
+            results: Dictionary containing evaluation results for all problems.
+        
+        Returns:
+            Dictionary containing analysis results including statistics, performance metrics,
+            and visualizations.
         """
         return self.result_analyzer.analyze(results)
 
 def main():
+    """
+    Main entry point for the application.
+    
+    This function:
+    1. Checks for API keys
+    2. Initializes the evaluator
+    3. Loads problems
+    4. Runs evaluations
+    5. Generates analysis
+    6. Saves results
+    """
     try:
         # Create .env template if it doesn't exist
         if not os.path.exists('.env'):
@@ -83,17 +132,15 @@ def main():
         available_models = list(evaluator.models.keys())
         print(f"Available models: {', '.join(available_models)}")
         
-        # Get random problems
+        # Get random problems for evaluation
         problems = evaluator.data_loader.get_random_problems(count=10)
         print(f"\nSelected {len(problems)} random problems for evaluation.")
         
-        # Evaluate problems
+        # Evaluate problems and generate analysis
         results = evaluator.evaluate_problems(problems)
-        
-        # Analyze results
         analysis = evaluator.analyze_results(results)
         
-        # Save analysis
+        # Save final analysis
         evaluator.result_analyzer.save_analysis(analysis)
         
         print("\nEvaluation complete! Results saved in the 'results' directory.")

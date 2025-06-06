@@ -1,3 +1,11 @@
+"""
+Result Analyzer Module for Mathematical Problem Evaluation System.
+
+This module handles the analysis and visualization of evaluation results from different
+AI models. It provides functionality to analyze model performance, generate statistics,
+and create visualizations of the results.
+"""
+
 import json
 import os
 import logging
@@ -9,7 +17,18 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 class ResultAnalyzer:
+    """
+    Class for analyzing and visualizing evaluation results.
+    
+    This class provides methods to:
+    - Analyze model performance
+    - Generate statistics
+    - Create visualizations
+    - Save results and analysis
+    """
+
     def __init__(self, results_dir: str = "results"):
+        """Initialize the ResultAnalyzer with necessary paths and configurations."""
         self.results_dir = results_dir
         self._create_directories()
         
@@ -29,7 +48,16 @@ class ResultAnalyzer:
         os.makedirs(self.results_dir, exist_ok=True)
 
     def analyze(self, results: Dict[str, Any]) -> Dict[str, Any]:
-        """Analyze evaluation results and generate statistics."""
+        """
+        Analyze evaluation results and generate insights.
+        
+        Args:
+            results: Dictionary containing evaluation results for all problems.
+            
+        Returns:
+            Dictionary containing analysis results including statistics and
+            performance metrics for each model.
+        """
         try:
             analysis = {
                 'timestamp': datetime.now().isoformat(),
@@ -137,7 +165,13 @@ class ResultAnalyzer:
         return categories
 
     def save_results(self, results: Dict[str, Any], filename: str) -> None:
-        """Save evaluation results to a JSON file."""
+        """
+        Save evaluation results to a JSON file.
+        
+        Args:
+            results: Dictionary containing evaluation results.
+            filename: Name of the file to save results to.
+        """
         try:
             file_path = os.path.join(self.results_dir, filename)
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -148,7 +182,12 @@ class ResultAnalyzer:
             raise
 
     def save_analysis(self, analysis: Dict[str, Any]) -> None:
-        """Save analysis results to a JSON file."""
+        """
+        Save analysis results and generate visualizations.
+        
+        Args:
+            analysis: Dictionary containing analysis results.
+        """
         try:
             file_path = os.path.join(self.results_dir, 'final_analysis.json')
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -163,7 +202,12 @@ class ResultAnalyzer:
             raise
 
     def _generate_visualizations(self, analysis: Dict[str, Any]):
-        """Generate visualization plots for analysis results"""
+        """
+        Generate and save visualizations of the analysis results.
+        
+        Args:
+            analysis: Dictionary containing analysis results.
+        """
         try:
             # Model accuracy plot
             self._plot_model_accuracy(analysis["overall_statistics"]["accuracy"])

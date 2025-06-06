@@ -1,55 +1,86 @@
+"""
+Gemini Model Module for Mathematical Problem Evaluation System.
+
+This module provides an interface to interact with Google's Gemini model
+for solving mathematical problems. It handles API communication, response
+generation, and error handling.
+"""
+
 import os
 import google.generativeai as genai
 from typing import Optional
 import logging
+from utils.config import Config
+
+logger = logging.getLogger(__name__)
 
 class GeminiModel:
+    """
+    Interface for interacting with Google's Gemini model.
+    
+    This class provides methods to:
+    - Initialize the Gemini model with API credentials
+    - Generate responses to mathematical problems
+    - Handle API errors and rate limits
+    """
+
     def __init__(self):
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY environment variable is not set")
+        """Initialize the Gemini model with API credentials."""
+        self.config = Config()
+        self.api_key = self.config.get_api_key('gemini')
         
-        genai.configure(api_key=api_key)
+        if not self.api_key:
+            logger.warning("Gemini API key not found. Gemini functionality will be disabled.")
+            return
+            
+        genai.configure(api_key=self.api_key)
         # List available models
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
                 print(f"Available model: {m.name}")
         
-        self.model = genai.GenerativeModel('gemini-1.5-flash')  # Using flash model which should be in free tier
+        self.model = genai.GenerativeModel('gemini-pro')
 
-    def generate_response(self, prompt: str, system_message: str = None) -> Optional[str]:
+    def generate_response(self, question: str) -> Optional[str]:
         """
-        Generate a response using the Gemini model
+        Generate a response to a mathematical problem using Gemini.
         
         Args:
-            prompt (str): The problem prompt
-            system_message (str, optional): System message to guide the model
+            question: The mathematical problem to solve.
             
         Returns:
-            Optional[str]: The model's response or None if an error occurs
+            The model's response as a string, or None if an error occurs.
         """
-        try:
-            if system_message is None:
-                system_message = (
-                    "You are a mathematical problem solver. "
-                    "Please solve the problem step by step, showing your work and reasoning. "
-                    "Make sure to clearly indicate each step of your solution process."
-                )
+        if not self.api_key:
+            logger.error("Cannot generate response: Gemini API key not configured")
+            return None
 
-            # Combine system message and prompt
-            full_prompt = f"{system_message}\n\n{prompt}" if system_message else prompt
+        try:
+            # Configure the model for mathematical problem solving
+            generation_config = {
+                "temperature": 0.3,  # Lower temperature for more focused responses
+                "top_p": 0.8,
+                "top_k": 40,
+                "max_output_tokens": 500,
+            }
             
-            response = self.model.generate_content(full_prompt)
+            # Create the prompt with system instructions
+            prompt = f"""You are a mathematical problem solver. Please solve the following problem step by step.
+            Show your work and reasoning clearly. End with the final answer.
+
+            Problem: {question}"""
             
-            if not response.text:
-                logging.error("Empty response from Gemini API")
-                return "Error: Empty response from model"
-                
-            return response.text
+            # Generate the response
+            response = self.model.generate_content(
+                prompt,
+                generation_config=generation_config
+            )
+            
+            return response.text.strip()
             
         except Exception as e:
-            logging.error(f"Error in Gemini API call: {str(e)}")
-            return f"Error: {str(e)}"
+            logger.error(f"Error generating Gemini response: {str(e)}")
+            return None
 
 # Example usage
 if __name__ == "__main__":
