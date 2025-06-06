@@ -1,52 +1,82 @@
-# Matematik Problemi Değerlendirme Sistemi
+# Mathematical Problem Evaluation System
 
-Bu proje, farklı yapay zeka modellerinin (ChatGPT, Gemini ve Perplexity) matematik problemlerini çözme yeteneklerini değerlendiren ve karşılaştıran bir Python uygulamasıdır.
+A comprehensive Python-based system that evaluates and compares the mathematical problem-solving capabilities of different AI models (ChatGPT, Gemini, and Perplexity). The system automatically analyzes model responses, generates detailed performance metrics, and provides visual insights into model capabilities.
 
-## Özellikler
+## Features
 
-- **Çoklu Model Desteği**: ChatGPT, Gemini ve Perplexity modellerini destekler
-- **Otomatik Değerlendirme**: Problem çözümlerini otomatik olarak değerlendirir
-- **Detaylı Analiz**: Her model için performans metrikleri ve istatistikler
-- **Görselleştirme**: Model performanslarını görsel grafiklerle sunar
-- **Kategori Bazlı Analiz**: Problem kategorilerine göre model performanslarını analiz eder
-- **Adım Analizi**: Çözüm adımlarının detaylı analizi
-- **Hata Analizi**: Yanlış cevapların detaylı analizi
+- **Multi-Model Support**: ChatGPT, Gemini, and Perplexity models
+- **Automatic Evaluation**: Automated problem solution evaluation
+- **Detailed Analysis**: Performance metrics and statistics for each model
+- **Visualization**: Visual performance comparisons through graphs
+- **Category-Based Analysis**: Model performance analysis by problem categories
+- **Step Analysis**: Detailed analysis of solution steps
+- **Error Analysis**: Comprehensive analysis of incorrect answers
 
-## Kurulum
+## Installation
 
-1. Projeyi klonlayın:
+1. Clone the repository:
 ```bash
-git clone <repo-url>
-cd <proje-dizini>
+git clone https://github.com/karamustafa10/mathematical-problem-evaluation.git
+cd mathematical-problem-evaluation
 ```
 
-2. Gerekli paketleri yükleyin:
+2. Install required packages:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. `.env` dosyası oluşturun ve API anahtarlarınızı ekleyin:
+3. Create a `.env` file and add your API keys:
 ```
 OPENAI_API_KEY=your_openai_api_key
 GOOGLE_API_KEY=your_google_api_key
 PERPLEXITY_API_KEY=your_perplexity_api_key
 ```
 
-## Kullanım
+## Data Preparation
 
-Uygulamayı başlatmak için:
+### Option 1: Using Sample Data
+The system will automatically create a sample problem if no data files are found in the `data` directory.
+
+### Option 2: Using Custom Data
+1. Create a `data` directory in the project root:
+```bash
+mkdir data
+```
+
+2. Prepare your CSV files with the following structure:
+```csv
+problem_id,problem,answer,solution,category,difficulty
+1,"What is the sum of all positive integers less than 100 that are divisible by 3?","1683","Step 1: Identify numbers...","arithmetic","medium"
+```
+
+Required columns:
+- `problem_id`: Unique identifier for the problem
+- `problem`: The problem text
+- `answer`: Correct answer
+- `solution`: Step-by-step solution
+- `category`: Problem category (arithmetic, algebra, geometry, etc.)
+- `difficulty`: Problem difficulty level (easy, medium, hard)
+
+### Option 3: Using AIME Problems
+1. Download AIME problems from the official website
+2. Convert the problems to the required CSV format
+3. Place the CSV files in the `data` directory
+
+## Usage
+
+Run the program:
 ```bash
 python src/main.py
 ```
 
-Program otomatik olarak:
-1. Kullanılabilir modelleri listeler
-2. Veri klasöründen rastgele 10 problem seçer
-3. Her problemi tüm modellerle çözer
-4. Sonuçları analiz eder ve görselleştirir
-5. Tüm sonuçları `results` klasörüne kaydeder
+The program will:
+1. List available models
+2. Select 10 random problems from the data directory
+3. Solve each problem using all models
+4. Analyze and visualize the results
+5. Save all results in the `results` directory
 
-## Proje Yapısı
+## Project Structure
 
 ```
 ├── src/
@@ -63,45 +93,37 @@ Program otomatik olarak:
 │   │   └── config.py
 │   └── main.py
 ├── data/
-│   └── *.csv (problem dosyaları)
+│   └── *.csv (problem files)
 ├── results/
-│   ├── problem_*.json (her problem için sonuçlar)
-│   ├── final_analysis.json (genel analiz)
-│   └── *.png (görselleştirmeler)
+│   ├── problem_*.json (results for each problem)
+│   ├── final_analysis.json (overall analysis)
+│   └── *.png (visualizations)
 ├── requirements.txt
 └── .env
 ```
 
-## Veri Formatı
+## Analysis Outputs
 
-Problem dosyaları CSV formatında olmalıdır ve şu sütunları içermelidir:
-- `problem_id`: Benzersiz problem tanımlayıcısı
-- `problem`: Problem metni
-- `answer`: Doğru cevap
-- `solution`: Çözüm adımları
+The program generates the following analyses:
+1. **Overall Statistics**:
+   - Total number of problems
+   - Correct/incorrect answer counts
+   - Model accuracy rates
 
-## Analiz Çıktıları
+2. **Model Performance**:
+   - Accuracy rate for each model
+   - Average number of solution steps
+   - Category-based performance
 
-Program şu analizleri üretir:
-1. **Genel İstatistikler**:
-   - Toplam problem sayısı
-   - Doğru/yanlış cevap sayıları
-   - Model doğruluk oranları
+3. **Step Analysis**:
+   - Step types used by each model
+   - Step count distribution
 
-2. **Model Performansı**:
-   - Her model için doğruluk oranı
-   - Ortalama çözüm adımı sayısı
-   - Kategori bazlı performans
+4. **Error Analysis**:
+   - Detailed analysis of incorrect answers
+   - Comparison of expected and received answers
 
-3. **Adım Analizi**:
-   - Her model için kullanılan adım tipleri
-   - Adım sayısı dağılımı
-
-4. **Hata Analizi**:
-   - Yanlış cevapların detaylı analizi
-   - Beklenen ve alınan cevapların karşılaştırması
-
-## Gereksinimler
+## Requirements
 
 - Python 3.8+
 - openai
@@ -112,29 +134,36 @@ Program şu analizleri üretir:
 - seaborn
 - pandas
 
-## Hata Ayıklama
+## Troubleshooting
 
-Program çalışırken oluşabilecek hatalar:
-1. API anahtarları eksik veya geçersiz
-2. Veri dosyaları bulunamadı
-3. Model API'lerine erişim sorunları
+Common issues and solutions:
+1. API keys missing or invalid
+   - Check your `.env` file
+   - Verify API key permissions
+2. Data files not found
+   - Ensure CSV files are in the `data` directory
+   - Check file format and column names
+3. Model API access issues
+   - Check internet connection
+   - Verify API rate limits
+   - Check API key quotas
 
-Hata mesajları `evaluation.log` dosyasına kaydedilir.
+Error messages are logged in `evaluation.log`.
 
-## Katkıda Bulunma
+## Contributing
 
-1. Bu depoyu fork edin
-2. Yeni bir branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Değişikliklerinizi commit edin (`git commit -m 'Add some amazing feature'`)
-4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
-5. Bir Pull Request oluşturun
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## Lisans
+## License
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakın.
+This project is licensed under the MIT License - see the `LICENSE` file for details.
 
-## İletişim
+## Contact
 
-Proje Sahibi - [@github_username](https://github.com/github_username)
+Project Owner - [@karamustafa10](https://github.com/karamustafa10)
 
-Proje Linki: [https://github.com/github_username/repo_name](https://github.com/github_username/repo_name) 
+Project Link: [https://github.com/karamustafa10/mathematical-problem-evaluation](https://github.com/karamustafa10/mathematical-problem-evaluation) 
