@@ -1,10 +1,31 @@
+"""
+Problem Evaluator Module for Mathematical Problem Evaluation System.
+
+This module handles the evaluation of AI model responses to mathematical problems.
+It provides functionality to compare model responses with correct answers and
+generate detailed evaluation results.
+"""
+
 import re
 import json
 import logging
 from typing import Dict, List, Optional, Any
+import math
+
+logger = logging.getLogger(__name__)
 
 class ProblemEvaluator:
+    """
+    Class for evaluating AI model responses to mathematical problems.
+    
+    This class provides methods to:
+    - Evaluate model responses against correct answers
+    - Normalize and compare mathematical expressions
+    - Generate detailed evaluation results
+    """
+
     def __init__(self):
+        """Initialize the ProblemEvaluator with necessary configurations."""
         # Initialize logging
         logging.basicConfig(
             level=logging.INFO,
@@ -16,7 +37,7 @@ class ProblemEvaluator:
         )
         self.logger = logging.getLogger(__name__)
         
-        # Define step patterns
+        # Define step patterns for solution analysis
         self.step_patterns = {
             'calculation': r'\d+\s*[\+\-\*\/]\s*\d+\s*=\s*\d+',  # Basic arithmetic
             'equation': r'[a-zA-Z]\s*=\s*\d+',  # Variable assignment
@@ -30,19 +51,19 @@ class ProblemEvaluator:
 
     def evaluate_responses(self, problem: Dict[str, Any], responses: Dict[str, str]) -> Dict[str, Any]:
         """
-        Evaluate responses from different models for a given problem
+        Evaluate responses from different models for a given problem.
         
         Args:
-            problem (Dict): Problem data including question and correct answer
-            responses (Dict): Dictionary of model responses
+            problem: Dictionary containing problem data including question and correct answer.
+            responses: Dictionary of model responses to evaluate.
             
         Returns:
-            Dict: Evaluation results
+            Dictionary containing evaluation results for each model's response.
         """
         try:
             self.logger.info(f"Evaluating responses for problem: {problem.get('problem_id', 'unknown')}")
             
-            # Initialize results
+            # Initialize results structure
             results = {
                 "problem_id": problem.get("problem_id", "unknown"),
                 "question": problem.get("question", ""),
@@ -77,7 +98,15 @@ class ProblemEvaluator:
             raise
 
     def _extract_steps(self, response: str) -> List[Dict[str, str]]:
-        """Extract solution steps from response"""
+        """
+        Extract solution steps from a model's response.
+        
+        Args:
+            response: The complete response text from the model.
+            
+        Returns:
+            List of dictionaries containing step type and content.
+        """
         steps = []
         
         # Split response into lines
@@ -100,7 +129,16 @@ class ProblemEvaluator:
         return steps
 
     def _check_correctness(self, response: str, correct_answer: str) -> bool:
-        """Check if response contains correct answer"""
+        """
+        Check if a response contains the correct answer.
+        
+        Args:
+            response: The model's response text.
+            correct_answer: The correct answer to check against.
+            
+        Returns:
+            True if the correct answer is found in the response, False otherwise.
+        """
         try:
             # Extract numbers from response
             numbers = re.findall(r'\b\d+\b', response)
@@ -113,7 +151,15 @@ class ProblemEvaluator:
             return False
 
     def _extract_answer(self, response: str) -> Optional[str]:
-        """Extract final answer from response"""
+        """
+        Extract the final answer from a model's response.
+        
+        Args:
+            response: The model's response text.
+            
+        Returns:
+            The extracted answer as a string, or None if no answer is found.
+        """
         try:
             # Look for common answer patterns
             patterns = [
@@ -135,7 +181,15 @@ class ProblemEvaluator:
             return None
 
     def _analyze_steps(self, steps: List[Dict[str, str]]) -> Dict[str, Any]:
-        """Analyze solution steps"""
+        """
+        Analyze the solution steps in a model's response.
+        
+        Args:
+            steps: List of step dictionaries containing type and content.
+            
+        Returns:
+            Dictionary containing step analysis results.
+        """
         try:
             # Count steps by type
             step_counts = {}
@@ -165,7 +219,15 @@ class ProblemEvaluator:
             }
 
     def _check_step_completeness(self, step_sequence: List[str]) -> bool:
-        """Check if solution steps form a complete solution"""
+        """
+        Check if the solution steps form a complete solution.
+        
+        Args:
+            step_sequence: List of step types in order of appearance.
+            
+        Returns:
+            True if the solution is complete, False otherwise.
+        """
         # Define required step types for a complete solution
         required_steps = {'calculation', 'conclusion'}
         
