@@ -1,115 +1,73 @@
 """
-Problem Evaluator Module for Mathematical Problem Evaluation System.
-
-This module handles the evaluation of AI model responses to mathematical problems.
-It provides functionality to compare model responses with correct answers and
-generate detailed evaluation results.
+Problem evaluator module for evaluating AI model responses to mathematical problems.
 """
 
 import re
-import json
 import logging
 from typing import Dict, List, Optional, Any
-import math
-
-logger = logging.getLogger(__name__)
 
 class ProblemEvaluator:
-    """
-    Class for evaluating AI model responses to mathematical problems.
+    """Evaluates AI model responses to mathematical problems."""
     
-    This class provides methods to:
-    - Evaluate model responses against correct answers
-    - Normalize and compare mathematical expressions
-    - Generate detailed evaluation results
-    """
-
     def __init__(self):
-        """Initialize the ProblemEvaluator with necessary configurations."""
-        # Initialize logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler('evaluation.log'),
-                logging.StreamHandler()
-            ]
-        )
+        """Initialize the ProblemEvaluator."""
         self.logger = logging.getLogger(__name__)
         
-        # Define step patterns for solution analysis
+        # Define patterns for identifying solution components
         self.step_patterns = {
-            'calculation': r'\d+\s*[\+\-\*\/]\s*\d+\s*=\s*\d+',  # Basic arithmetic
-            'equation': r'[a-zA-Z]\s*=\s*\d+',  # Variable assignment
-            'formula': r'[a-zA-Z]\([^)]+\)\s*=\s*\d+',  # Function application
-            'explanation': r'(?:because|since|therefore|thus|hence|as a result)',  # Reasoning
-            'substitution': r'(?:substituting|replacing|plugging in)',  # Value substitution
-            'simplification': r'(?:simplifying|reducing|combining)',  # Expression simplification
-            'verification': r'(?:checking|verifying|confirming)',  # Solution verification
-            'conclusion': r'(?:therefore|thus|hence|we get|we obtain)'  # Final answer
+            'solution': r'(?:step|solution|solve|calculate|compute).*?(?=\n|$)',
+            'answer': r'(?:answer|result|therefore|thus).*?(?=\n|$)',
+            'explanation': r'(?:explain|because|since|as).*?(?=\n|$)'
         }
-
-    def evaluate_responses(self, problem: Dict[str, Any], responses: Dict[str, str]) -> Dict[str, Any]:
+        
+    def evaluate_responses(self, problem: Dict[str, str], responses: List[Dict[str, str]]) -> Dict[str, Dict[str, Any]]:
         """
-        Evaluate responses from different models for a given problem.
+        Evaluate model responses for a given problem.
         
         Args:
-            problem: Dictionary containing problem data including question and correct answer.
-            responses: Dictionary of model responses to evaluate.
+            problem: Dictionary containing problem text and answer
+            responses: List of dictionaries containing model responses
             
         Returns:
-            Dictionary containing evaluation results for each model's response.
+            Dictionary containing evaluation results for each model
         """
-        try:
-            self.logger.info(f"Evaluating responses for problem: {problem.get('problem_id', 'unknown')}")
+        self.logger.info(f"Evaluating responses for problem: {problem.get('problem_text', 'unknown')}")
+        
+        results = {}
+        for response in responses:
+            model_name = response.get('model', 'unknown')
+            response_text = response.get('response', '')
             
-            # Initialize results structure
-            results = {
-                "problem_id": problem.get("problem_id", "unknown"),
-                "question": problem.get("question", ""),
-                "correct_answer": problem.get("correct_answer", ""),
-                "model_evaluations": {}
+            # Extract and analyze steps
+            steps = self._extract_steps(response_text)
+            step_analysis = self._analyze_steps(response_text)
+            
+            # Check correctness
+            is_correct = self._check_correctness(response_text, problem.get('answer', ''))
+            
+            # Extract answer
+            extracted_answer = self._extract_answer(response_text)
+            
+            # Store results
+            results[model_name] = {
+                'is_correct': is_correct,
+                'extracted_answer': extracted_answer,
+                'step_analysis': step_analysis
             }
             
-            # Evaluate each model's response
-            for model_name, response in responses.items():
-                self.logger.info(f"Evaluating {model_name}'s response")
-                
-                # Extract steps and check correctness
-                steps = self._extract_steps(response)
-                is_correct = self._check_correctness(response, problem.get("correct_answer", ""))
-                step_analysis = self._analyze_steps(steps)
-                
-                # Store evaluation results
-                results["model_evaluations"][model_name] = {
-                    "response": response,
-                    "correctness": {
-                        "is_correct": is_correct,
-                        "matched_answer": self._extract_answer(response)
-                    },
-                    "step_analysis": step_analysis
-                }
-            
-            self.logger.info("Evaluation completed successfully")
-            return results
-            
-        except Exception as e:
-            self.logger.error(f"Error in evaluate_responses: {str(e)}")
-            raise
-
-    def _extract_steps(self, response: str) -> List[Dict[str, str]]:
+        return results
+        
+    def _extract_steps(self, response: str) -> List[str]:
         """
-        Extract solution steps from a model's response.
+        Extract solution steps from model response.
         
         Args:
-            response: The complete response text from the model.
+            response: Model's response text
             
         Returns:
-            List of dictionaries containing step type and content.
+            List of extracted steps
         """
         steps = []
-        
-        # Split response into lines
         lines = response.split('\n')
         
         for line in lines:
@@ -117,119 +75,131 @@ class ProblemEvaluator:
             if not line:
                 continue
                 
-            # Check each step pattern
-            for step_type, pattern in self.step_patterns.items():
+            # Remove step numbers and bullet points
+            line = re.sub(r'^\d+\.\s*|^[-*]\s*', '', line)
+            
+            # Check if line contains any step pattern
+            for pattern in self.step_patterns.values():
                 if re.search(pattern, line, re.IGNORECASE):
-                    steps.append({
-                        "type": step_type,
-                        "content": line
-                    })
+                    steps.append(line)
                     break
-        
+                    
         return steps
-
-    def _check_correctness(self, response: str, correct_answer: str) -> bool:
+        
+    def _check_correctness(self, response: str, expected_answer: str) -> bool:
         """
-        Check if a response contains the correct answer.
+        Check if the model's answer matches the expected answer.
         
         Args:
-            response: The model's response text.
-            correct_answer: The correct answer to check against.
+            response: Model's response text
+            expected_answer: Expected answer
             
         Returns:
-            True if the correct answer is found in the response, False otherwise.
+            True if answer is correct, False otherwise
         """
-        try:
-            # Extract numbers from response
-            numbers = re.findall(r'\b\d+\b', response)
-            
-            # Check if correct answer is in the numbers
-            return str(correct_answer) in numbers
-            
-        except Exception as e:
-            self.logger.error(f"Error checking correctness: {str(e)}")
+        extracted_answer = self._extract_answer(response)
+        if not extracted_answer or not expected_answer:
             return False
-
+            
+        # Normalize answers for comparison
+        extracted_answer = self._normalize_answer(extracted_answer)
+        expected_answer = self._normalize_answer(expected_answer)
+        
+        return extracted_answer == expected_answer
+        
     def _extract_answer(self, response: str) -> Optional[str]:
         """
-        Extract the final answer from a model's response.
+        Extract the final answer from model response.
         
         Args:
-            response: The model's response text.
+            response: Model's response text
             
         Returns:
-            The extracted answer as a string, or None if no answer is found.
+            Extracted answer or None if not found
         """
+        # Look for answer pattern
+        answer_pattern = r'(?:answer|result|therefore|thus)[^\d]*(\d+(?:\.\d+)?)'
+        match = re.search(answer_pattern, response, re.IGNORECASE)
+        
+        if match:
+            return match.group(1)
+            
+        # If no answer pattern found, try to find the last number in the response
+        numbers = re.findall(r'\b\d+(?:\.\d+)?\b', response)
+        if numbers:
+            return numbers[-1]
+            
+        return None
+        
+    def _analyze_steps(self, response: str) -> Dict[str, Any]:
+        """
+        Analyze the solution steps in the response.
+        
+        Args:
+            response: Model's response text
+            
+        Returns:
+            Dictionary containing step analysis
+        """
+        steps = self._extract_steps(response)
+        step_types = {}
+        
+        for step in steps:
+            for step_type, pattern in self.step_patterns.items():
+                if re.search(pattern, step, re.IGNORECASE):
+                    step_types[step_type] = step_types.get(step_type, 0) + 1
+                    break
+            else:
+                step_types['unknown'] = step_types.get('unknown', 0) + 1
+                
+        completeness = self._check_step_completeness(response)
+        
+        return {
+            'step_count': len(steps),
+            'step_types': step_types,
+            'completeness': completeness
+        }
+        
+    def _check_step_completeness(self, response: str) -> float:
+        """
+        Check the completeness of solution steps.
+        
+        Args:
+            response: Model's response text
+            
+        Returns:
+            Completeness score between 0 and 1
+        """
+        step_types = set()
+        for step_type, pattern in self.step_patterns.items():
+            if re.search(pattern, response, re.IGNORECASE):
+                step_types.add(step_type)
+                
+        # Calculate completeness based on required step types
+        required_types = {'solution', 'answer'}
+        if not required_types:
+            return 0.0
+            
+        return len(step_types.intersection(required_types)) / len(required_types)
+        
+    def _normalize_answer(self, answer: str) -> str:
+        """
+        Normalize answer for comparison.
+        
+        Args:
+            answer: Answer string to normalize
+            
+        Returns:
+            Normalized answer string
+        """
+        # Remove whitespace and convert to lowercase
+        answer = answer.strip().lower()
+        
+        # Remove common units and symbols
+        answer = re.sub(r'[^\d.]', '', answer)
+        
+        # Convert to float and back to string to normalize decimal format
         try:
-            # Look for common answer patterns
-            patterns = [
-                r'answer[:\s]+(\d+)',
-                r'solution[:\s]+(\d+)',
-                r'result[:\s]+(\d+)',
-                r'(\d+)(?:\s*$|\s*[\.\n])'  # Number at end of line or followed by period/newline
-            ]
-            
-            for pattern in patterns:
-                match = re.search(pattern, response, re.IGNORECASE)
-                if match:
-                    return match.group(1)
-            
-            return None
-            
-        except Exception as e:
-            self.logger.error(f"Error extracting answer: {str(e)}")
-            return None
-
-    def _analyze_steps(self, steps: List[Dict[str, str]]) -> Dict[str, Any]:
-        """
-        Analyze the solution steps in a model's response.
-        
-        Args:
-            steps: List of step dictionaries containing type and content.
-            
-        Returns:
-            Dictionary containing step analysis results.
-        """
-        try:
-            # Count steps by type
-            step_counts = {}
-            step_sequence = []
-            
-            for step in steps:
-                step_type = step["type"]
-                if step_type not in step_counts:
-                    step_counts[step_type] = 0
-                step_counts[step_type] += 1
-                step_sequence.append(step_type)
-            
-            return {
-                "step_count": len(steps),
-                "step_types": step_counts,
-                "step_sequence": step_sequence,
-                "is_complete": self._check_step_completeness(step_sequence)
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error analyzing steps: {str(e)}")
-            return {
-                "step_count": 0,
-                "step_types": {},
-                "step_sequence": [],
-                "is_complete": False
-            }
-
-    def _check_step_completeness(self, step_sequence: List[str]) -> bool:
-        """
-        Check if the solution steps form a complete solution.
-        
-        Args:
-            step_sequence: List of step types in order of appearance.
-            
-        Returns:
-            True if the solution is complete, False otherwise.
-        """
-        # Define required step types for a complete solution
-        required_steps = {'calculation', 'conclusion'}
-        
-        # Check if all required steps are present
-        return all(step in step_sequence for step in required_steps) 
+            return str(float(answer))
+        except ValueError:
+            return answer 

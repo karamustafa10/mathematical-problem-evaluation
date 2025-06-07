@@ -1,14 +1,15 @@
 """
-Test module for the DataLoader class.
+Test cases for the DataLoader class.
 """
 
 import unittest
 import os
 import pandas as pd
+import json
 from src.data.data_loader import DataLoader
 
 class TestDataLoader(unittest.TestCase):
-    """Test cases for the DataLoader class."""
+    """Test cases for DataLoader class."""
     
     def setUp(self):
         """Set up test environment."""
@@ -16,76 +17,107 @@ class TestDataLoader(unittest.TestCase):
         os.makedirs(self.test_data_dir, exist_ok=True)
         
         # Create sample CSV file
-        self.sample_data = pd.DataFrame({
-            'question': ['Test question 1', 'Test question 2'],
-            'solution': ['Test solution 1', 'Test solution 2'],
-            'answer': ['A', 'B']
+        self.csv_file = os.path.join(self.test_data_dir, 'sample.csv')
+        df = pd.DataFrame({
+            'problem_text': ['Problem 1', 'Problem 2'],
+            'answer': ['Answer 1', 'Answer 2']
         })
-        self.sample_file = os.path.join(self.test_data_dir, 'sample.csv')
-        self.sample_data.to_csv(self.sample_file, index=False)
+        df.to_csv(self.csv_file, index=False)
         
+        # Create sample JSON file
+        self.json_file = os.path.join(self.test_data_dir, 'sample.json')
+        data = [
+            {'problem_text': 'Problem 1', 'answer': 'Answer 1'},
+            {'problem_text': 'Problem 2', 'answer': 'Answer 2'}
+        ]
+        with open(self.json_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f)
+            
     def tearDown(self):
         """Clean up test environment."""
-        if os.path.exists(self.sample_file):
-            os.remove(self.sample_file)
-        if os.path.exists(self.test_data_dir):
-            os.rmdir(self.test_data_dir)
-            
-    def test_load_data(self):
+        for file in os.listdir(self.test_data_dir):
+            os.remove(os.path.join(self.test_data_dir, file))
+        os.rmdir(self.test_data_dir)
+        
+    def test_load_data_csv(self):
         """Test loading data from CSV file."""
-        loader = DataLoader(self.test_data_dir)
+        loader = DataLoader(self.csv_file)
         data = loader.load_data()
         
-        self.assertIsInstance(data, list)
+        self.assertIsInstance(data, pd.DataFrame)
         self.assertEqual(len(data), 2)
-        self.assertIn('question', data[0])
-        self.assertIn('solution', data[0])
-        self.assertIn('answer', data[0])
+        self.assertIn('problem_text', data.columns)
+        self.assertIn('answer', data.columns)
         
-    def test_empty_directory(self):
-        """Test behavior with empty directory."""
-        empty_dir = 'empty_test_data'
-        os.makedirs(empty_dir, exist_ok=True)
-        
-        loader = DataLoader(empty_dir)
+    def test_load_data_json(self):
+        """Test loading data from JSON file."""
+        loader = DataLoader(self.json_file)
         data = loader.load_data()
         
-        self.assertIsInstance(data, list)
-        self.assertEqual(len(data), 0)
-        
-        os.rmdir(empty_dir)
+        self.assertIsInstance(data, pd.DataFrame)
+        self.assertEqual(len(data), 2)
+        self.assertIn('problem_text', data.columns)
+        self.assertIn('answer', data.columns)
         
     def test_invalid_file(self):
-        """Test behavior with invalid CSV file."""
-        invalid_file = os.path.join(self.test_data_dir, 'invalid.csv')
+        """Test behavior with invalid file."""
+        invalid_file = os.path.join(self.test_data_dir, 'invalid.txt')
         with open(invalid_file, 'w') as f:
-            f.write('invalid,csv,data\n')
+            f.write('Invalid data')
             
-        loader = DataLoader(self.test_data_dir)
-        data = loader.load_data()
-        
-        self.assertIsInstance(data, list)
-        self.assertEqual(len(data), 2)  # Should still load valid file
-        
-        os.remove(invalid_file)
-        
+        loader = DataLoader(invalid_file)
+        with self.assertRaises(ValueError):
+            loader.load_data()
+            
     def test_missing_columns(self):
         """Test behavior with missing required columns."""
-        invalid_data = pd.DataFrame({
-            'question': ['Test question'],
-            'solution': ['Test solution']
-            # Missing 'answer' column
-        })
-        invalid_file = os.path.join(self.test_data_dir, 'invalid.csv')
-        invalid_data.to_csv(invalid_file, index=False)
+        # Create CSV with missing columns
+        invalid_csv = os.path.join(self.test_data_dir, 'invalid.csv')
+        df = pd.DataFrame({'other_column': ['Value 1', 'Value 2']})
+        df.to_csv(invalid_csv, index=False)
         
-        loader = DataLoader(self.test_data_dir)
+        loader = DataLoader(invalid_csv)
         data = loader.load_data()
         
-        self.assertIsInstance(data, list)
-        self.assertEqual(len(data), 2)  # Should still load valid file
+        self.assertIsInstance(data, pd.DataFrame)
+        self.assertEqual(len(data), 2)
+        self.assertNotIn('problem_text', data.columns)
+        self.assertNotIn('answer', data.columns)
         
-        os.remove(invalid_file)
+    def test_preprocess_data(self):
+        """Test data preprocessing."""
+        loader = DataLoader(self.csv_file)
+        data = loader.load_data()
+        processed_data = loader.preprocess_data()
         
+        self.assertIsInstance(processed_data, pd.DataFrame)
+        self.assertEqual(len(processed_data), 2)
+        self.assertTrue(processed_data['problem_text'].dtype == 'object')
+        self.assertTrue(processed_data['answer'].dtype == 'object')
+        
+    def test_get_problem(self):
+        """Test retrieving a specific problem."""
+        loader = DataLoader(self.csv_file)
+        loader.load_data()
+        problem = loader.get_problem(0)
+        
+        self.assertIsInstance(problem, dict)
+        self.assertIn('problem_text', problem)
+        self.assertIn('answer', problem)
+        self.assertEqual(problem['problem_text'], 'Problem 1')
+        self.assertEqual(problem['answer'], 'Answer 1')
+        
+    def test_get_all_problems(self):
+        """Test retrieving all problems."""
+        loader = DataLoader(self.csv_file)
+        loader.load_data()
+        problems = loader.get_all_problems()
+        
+        self.assertIsInstance(problems, list)
+        self.assertEqual(len(problems), 2)
+        self.assertIsInstance(problems[0], dict)
+        self.assertIn('problem_text', problems[0])
+        self.assertIn('answer', problems[0])
+
 if __name__ == '__main__':
     unittest.main() 
