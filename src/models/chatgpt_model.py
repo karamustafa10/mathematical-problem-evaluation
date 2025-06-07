@@ -6,7 +6,7 @@ for solving mathematical problems. It handles API communication, response
 generation, and error handling.
 """
 
-import openai
+from openai import OpenAI
 import logging
 from typing import Optional
 from utils.config import Config
@@ -32,7 +32,7 @@ class ChatGPTModel:
             logger.warning("OpenAI API key not found. ChatGPT functionality will be disabled.")
             return
             
-        openai.api_key = self.api_key
+        self.client = OpenAI(api_key=self.api_key)
         self.model = "gpt-3.5-turbo"
 
     def generate_response(self, question: str) -> Optional[str]:
@@ -50,16 +50,37 @@ class ChatGPTModel:
             return None
 
         try:
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a mathematical problem solver. "
-                                                "Provide clear, step-by-step solutions and "
-                                                "end with the final answer."},
+                    {"role": "system", "content": """You are an expert mathematical problem solver. Your task is to solve mathematical problems with precision and clarity.
+
+Problem-Solving Strategy:
+1. First, carefully read and understand the problem
+2. Identify the key mathematical concepts and formulas needed
+3. Break down the solution into clear, logical steps
+4. Show all calculations and intermediate results
+5. Verify your solution by checking each step
+6. Provide the final answer in a clear format
+
+Guidelines for Each Step:
+- Start with a clear understanding of what is being asked
+- List any relevant formulas or mathematical principles
+- Show your work in a step-by-step manner
+- Include units and labels where appropriate
+- Double-check all calculations
+- Verify your answer makes sense in the context of the problem
+- If you're unsure about any step, explain your reasoning
+
+Remember:
+- Accuracy is crucial - take your time to ensure each step is correct
+- Show all your work - don't skip steps
+- Use clear mathematical notation
+- End with a clear, boxed final answer"""},
                     {"role": "user", "content": question}
                 ],
                 temperature=0.3,  # Lower temperature for more focused responses
-                max_tokens=500
+                max_tokens=1000  # Increased token limit for more detailed solutions
             )
             
             return response.choices[0].message.content.strip()

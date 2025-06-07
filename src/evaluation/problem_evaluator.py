@@ -75,6 +75,23 @@ class ProblemEvaluator:
             for model_name, response in responses.items():
                 self.logger.info(f"Evaluating {model_name}'s response")
                 
+                if response is None:
+                    # Handle None response
+                    results["model_evaluations"][model_name] = {
+                        "response": None,
+                        "correctness": {
+                            "is_correct": False,
+                            "matched_answer": None,
+                            "error": "No response received from model"
+                        },
+                        "step_analysis": {
+                            "step_count": 0,
+                            "step_types": {},
+                            "completeness": False
+                        }
+                    }
+                    continue
+                
                 # Extract steps and check correctness
                 steps = self._extract_steps(response)
                 is_correct = self._check_correctness(response, problem.get("correct_answer", ""))
@@ -107,6 +124,9 @@ class ProblemEvaluator:
         Returns:
             List of dictionaries containing step type and content.
         """
+        if not response:
+            return []
+            
         steps = []
         
         # Split response into lines
@@ -139,6 +159,9 @@ class ProblemEvaluator:
         Returns:
             True if the correct answer is found in the response, False otherwise.
         """
+        if not response or not correct_answer:
+            return False
+            
         try:
             # Extract numbers from response
             numbers = re.findall(r'\b\d+\b', response)
@@ -160,6 +183,9 @@ class ProblemEvaluator:
         Returns:
             The extracted answer as a string, or None if no answer is found.
         """
+        if not response:
+            return None
+            
         try:
             # Look for common answer patterns
             patterns = [
@@ -202,11 +228,13 @@ class ProblemEvaluator:
                 step_counts[step_type] += 1
                 step_sequence.append(step_type)
             
+            # Check step completeness
+            completeness = self._check_step_completeness(step_sequence)
+            
             return {
                 "step_count": len(steps),
                 "step_types": step_counts,
-                "step_sequence": step_sequence,
-                "is_complete": self._check_step_completeness(step_sequence)
+                "completeness": completeness
             }
             
         except Exception as e:
@@ -214,22 +242,31 @@ class ProblemEvaluator:
             return {
                 "step_count": 0,
                 "step_types": {},
-                "step_sequence": [],
-                "is_complete": False
+                "completeness": False
             }
 
     def _check_step_completeness(self, step_sequence: List[str]) -> bool:
         """
-        Check if the solution steps form a complete solution.
+        Check if the solution steps follow a logical sequence.
         
         Args:
             step_sequence: List of step types in order of appearance.
             
         Returns:
-            True if the solution is complete, False otherwise.
+            True if the steps follow a logical sequence, False otherwise.
         """
-        # Define required step types for a complete solution
-        required_steps = {'calculation', 'conclusion'}
+        if not step_sequence:
+            return False
+            
+        # Define expected step sequence
+        expected_sequence = [
+            'explanation',
+            'substitution',
+            'calculation',
+            'simplification',
+            'verification',
+            'conclusion'
+        ]
         
-        # Check if all required steps are present
-        return all(step in step_sequence for step in required_steps) 
+        # Check if all expected steps are present
+        return all(step in step_sequence for step in expected_sequence) 
