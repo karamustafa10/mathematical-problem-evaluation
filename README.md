@@ -79,6 +79,7 @@ The program will:
 5. Analyze and visualize the results
 6. Save all results in the `results` directory
 7. Generate detailed logs in `evaluation.log`
+8. Generate a step-by-step comparative error report in `results/comparison_report.json`
 
 ## Project Structure
 
@@ -130,6 +131,11 @@ The program generates the following analyses:
 4. **Error Analysis**:
    - Detailed analysis of incorrect answers
    - Comparison of expected and received answers
+
+5. **Step-by-step Comparative Error Report**:
+   - For each problem, compares the steps of correct and incorrect models
+   - Shows where the incorrect model made a mistake and how the correct model fixed it
+   - Saved as `results/comparison_report.json`
 
 ## Requirements
 
