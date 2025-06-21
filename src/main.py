@@ -74,21 +74,27 @@ class MathProblemEvaluator:
             
             # Get responses from all models
             model_responses = {}
+            model_categories = {}
             for model_name, model in self.models.items():
                 try:
                     response = model.generate_response(problem['question'])
-                    model_responses[model_name] = response
+                    if response and isinstance(response, dict):
+                        model_responses[model_name] = response.get('solution', None)
+                        model_categories[model_name] = response.get('category', None)
+                    else:
+                        model_responses[model_name] = response if isinstance(response, str) else None
+                        model_categories[model_name] = None
                 except Exception as e:
                     logger.error(f"Error with {model_name}: {str(e)}")
                     model_responses[model_name] = None
-            
+                    model_categories[model_name] = None
+            # Model kategorilerini problem sözlüğüne ekle
+            problem['model_categories'] = model_categories
             # Evaluate responses and save results
             evaluation_results = self.evaluator.evaluate_responses(problem, model_responses)
             results[problem_id] = evaluation_results
-            
             # Save individual problem results
             self.result_analyzer.save_results(evaluation_results, f"problem_{problem_id}.json")
-        
         return results
 
     def analyze_results(self, results: Dict[str, Any]) -> Dict[str, Any]:

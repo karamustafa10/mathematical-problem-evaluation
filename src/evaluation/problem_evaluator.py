@@ -70,15 +70,27 @@ class ProblemEvaluator:
                 "correct_answer": problem.get("correct_answer", ""),
                 "model_evaluations": {}
             }
+            model_categories = problem.get('model_categories', {})
             
             # Evaluate each model's response
             for model_name, response in responses.items():
                 self.logger.info(f"Evaluating {model_name}'s response")
                 
-                if response is None:
+                predicted_category = None
+                # Eğer response bir dict ise, çözüm ve kategori ayrıştır
+                if isinstance(response, dict):
+                    solution = response.get('solution', None)
+                    predicted_category = response.get('category', None)
+                    response_text = solution
+                else:
+                    response_text = response
+                    predicted_category = model_categories.get(model_name) if model_categories else None
+                
+                if response_text is None:
                     # Handle None response
                     results["model_evaluations"][model_name] = {
                         "response": None,
+                        "predicted_category": predicted_category,
                         "correctness": {
                             "is_correct": False,
                             "matched_answer": None,
@@ -93,16 +105,17 @@ class ProblemEvaluator:
                     continue
                 
                 # Extract steps and check correctness
-                steps = self._extract_steps(response)
-                is_correct = self._check_correctness(response, problem.get("correct_answer", ""))
+                steps = self._extract_steps(response_text)
+                is_correct = self._check_correctness(response_text, problem.get("correct_answer", ""))
                 step_analysis = self._analyze_steps(steps)
                 
                 # Store evaluation results
                 results["model_evaluations"][model_name] = {
-                    "response": response,
+                    "response": response_text,
+                    "predicted_category": predicted_category,
                     "correctness": {
                         "is_correct": is_correct,
-                        "matched_answer": self._extract_answer(response)
+                        "matched_answer": self._extract_answer(response_text)
                     },
                     "step_analysis": step_analysis
                 }

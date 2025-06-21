@@ -150,18 +150,19 @@ class ResultAnalyzer:
         return errors
 
     def _analyze_categories(self, results: Dict[str, Any]) -> Dict[str, Dict[str, int]]:
-        """Analyze performance by problem category."""
+        """Analyze performance by each model's predicted category."""
         categories = {}
-        
-        for problem_results in results.values():
-            category = problem_results.get('category', 'unknown')
-            if category not in categories:
-                categories[category] = {'chatgpt': 0, 'gemini': 0, 'perplexity': 0}
-            
-            for model, evaluation in problem_results.get('model_evaluations', {}).items():
-                if evaluation.get('correctness', {}).get('is_correct', False):
-                    categories[category][model] += 1
-        
+        models = ['chatgpt', 'gemini', 'perplexity']
+        for model in models:
+            for problem_results in results.values():
+                evaluation = problem_results.get('model_evaluations', {}).get(model, {})
+                if evaluation and evaluation.get('correctness', {}).get('is_correct', False):
+                    predicted_category = evaluation.get('predicted_category', 'unknown')
+                    if not predicted_category:
+                        predicted_category = 'unknown'
+                    if predicted_category not in categories:
+                        categories[predicted_category] = {m: 0 for m in models}
+                    categories[predicted_category][model] += 1
         return categories
 
     def save_results(self, results: Dict[str, Any], filename: str) -> None:

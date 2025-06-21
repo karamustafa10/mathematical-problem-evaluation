@@ -35,15 +35,15 @@ class ChatGPTModel:
         self.client = OpenAI(api_key=self.api_key)
         self.model = "gpt-3.5-turbo"
 
-    def generate_response(self, question: str) -> Optional[str]:
+    def generate_response(self, question: str) -> Optional[dict]:
         """
-        Generate a response to a mathematical problem using ChatGPT.
+        Generate a response to a mathematical problem using ChatGPT, including category prediction.
         
         Args:
             question: The mathematical problem to solve.
             
         Returns:
-            The model's response as a string, or None if an error occurs.
+            A dictionary with the model's solution and predicted category, or None if an error occurs.
         """
         if not self.api_key:
             logger.error("Cannot generate response: OpenAI API key not configured")
@@ -53,38 +53,26 @@ class ChatGPTModel:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": """You are an expert mathematical problem solver. Your task is to solve mathematical problems with precision and clarity.
-
-Problem-Solving Strategy:
-1. First, carefully read and understand the problem
-2. Identify the key mathematical concepts and formulas needed
-3. Break down the solution into clear, logical steps
-4. Show all calculations and intermediate results
-5. Verify your solution by checking each step
-6. Provide the final answer in a clear format
-
-Guidelines for Each Step:
-- Start with a clear understanding of what is being asked
-- List any relevant formulas or mathematical principles
-- Show your work in a step-by-step manner
-- Include units and labels where appropriate
-- Double-check all calculations
-- Verify your answer makes sense in the context of the problem
-- If you're unsure about any step, explain your reasoning
-
-Remember:
-- Accuracy is crucial - take your time to ensure each step is correct
-- Show all your work - don't skip steps
-- Use clear mathematical notation
-- End with a clear, boxed final answer"""},
+                    {"role": "system", "content": '''You are an expert mathematical problem solver. Your task is to solve mathematical problems with precision and clarity.\n\nProblem-Solving Strategy:\n1. First, carefully read and understand the problem\n2. Identify the key mathematical concepts and formulas needed\n3. Break down the solution into clear, logical steps\n4. Show all calculations and intermediate results\n5. Verify your solution by checking each step\n6. Provide the final answer in a clear format\n\nGuidelines for Each Step:\n- Start with a clear understanding of what is being asked\n- List any relevant formulas or mathematical principles\n- Show your work in a step-by-step manner\n- Include units and labels where appropriate\n- Double-check all calculations\n- Verify your answer makes sense in the context of the problem\n- If you're unsure about any step, explain your reasoning\n\nRemember:\n- Accuracy is crucial - take your time to ensure each step is correct\n- Show all your work - don't skip steps\n- Use clear mathematical notation\n- End with a clear, boxed final answer\n\nAdditionally, after solving the problem, state the mathematical category of the problem (such as geometry, algebra, probability, sequences, or 'unknown' if you are not sure).\nFormat your answer as follows:\nSolution: <your step-by-step solution>\nCategory: <category name>'''},
                     {"role": "user", "content": question}
                 ],
                 temperature=0.3,  # Lower temperature for more focused responses
                 max_tokens=1000  # Increased token limit for more detailed solutions
             )
-            
-            return response.choices[0].message.content.strip()
-            
+            content = response.choices[0].message.content.strip()
+            # Parse the response to extract solution and category
+            solution = None
+            category = None
+            lines = content.split('\n')
+            solution_lines = []
+            for line in lines:
+                if line.strip().lower().startswith('category:'):
+                    category = line.split(':', 1)[-1].strip()
+                    break
+                else:
+                    solution_lines.append(line)
+            solution = '\n'.join(solution_lines).replace('Solution:', '').strip()
+            return {'solution': solution, 'category': category}
         except Exception as e:
             logger.error(f"Error generating ChatGPT response: {str(e)}")
             return None
