@@ -145,7 +145,15 @@ def main():
         # Evaluate problems and generate analysis
         results = evaluator.evaluate_problems(problems)
         analysis = evaluator.analyze_results(results)
-        
+
+        # --- NEW ADDITION: Step-by-step comparative error report ---
+        comparison_report = evaluator.result_analyzer.compare_correct_and_incorrect_models(results)
+        comparison_path = os.path.join(evaluator.result_analyzer.results_dir, 'comparison_report.json')
+        with open(comparison_path, 'w', encoding='utf-8') as f:
+            json.dump(comparison_report, f, ensure_ascii=False, indent=2)
+        print(f"\nStep-by-step comparative error report has been saved to '{comparison_path}'.")
+        # --- END OF NEW ADDITION ---
+
         # Save final analysis
         evaluator.result_analyzer.save_analysis(analysis)
         

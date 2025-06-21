@@ -299,4 +299,83 @@ class ResultAnalyzer:
         
         plt.tight_layout()
         plt.savefig(os.path.join(self.results_dir, 'category_performance.png'))
-        plt.close() 
+        plt.close()
+
+    def compare_correct_and_incorrect_models(self, results: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        For each problem, compare the steps of correct and incorrect models.
+        Report where the incorrect model made a mistake and how the correct model fixed it.
+        Returns a dictionary with detailed comparison for each problem.
+        """
+        comparison_report = {}
+        for problem_id, problem_results in results.items():
+            model_evaluations = problem_results.get('model_evaluations', {})
+            correct_models = [m for m, eval in model_evaluations.items() if eval.get('correctness', {}).get('is_correct', False)]
+            incorrect_models = [m for m, eval in model_evaluations.items() if not eval.get('correctness', {}).get('is_correct', False)]
+            if not correct_models or not incorrect_models:
+                continue  # Skip if all correct or all incorrect
+            problem_report = []
+            for wrong_model in incorrect_models:
+                wrong_eval = model_evaluations[wrong_model]
+                wrong_steps = self._extract_steps_from_eval(wrong_eval)
+                for right_model in correct_models:
+                    right_eval = model_evaluations[right_model]
+                    right_steps = self._extract_steps_from_eval(right_eval)
+                    step_comparison = self._compare_steps(wrong_steps, right_steps)
+                    problem_report.append({
+                        'incorrect_model': wrong_model,
+                        'correct_model': right_model,
+                        'incorrect_steps': wrong_steps,
+                        'correct_steps': right_steps,
+                        'step_comparison': step_comparison,
+                        'incorrect_answer': wrong_eval.get('correctness', {}).get('matched_answer', None),
+                        'correct_answer': right_eval.get('correctness', {}).get('matched_answer', None)
+                    })
+            if problem_report:
+                comparison_report[problem_id] = {
+                    'question': problem_results.get('question', ''),
+                    'correct_answer': problem_results.get('correct_answer', ''),
+                    'comparisons': problem_report
+                }
+        return comparison_report
+
+    def _extract_steps_from_eval(self, eval_dict: Dict[str, Any]) -> list:
+        """
+        Extracts the list of step contents from a model evaluation dict.
+        """
+        response = eval_dict.get('response', '')
+        if not response:
+            return []
+        # Try to split by lines and filter out empty lines
+        return [line.strip() for line in response.split('\n') if line.strip()]
+
+    def _compare_steps(self, wrong_steps: list, right_steps: list) -> list:
+        """
+        Compare two lists of steps and return a list of differences and corrections.
+        """
+        comparison = []
+        max_len = max(len(wrong_steps), len(right_steps))
+        for i in range(max_len):
+            wrong = wrong_steps[i] if i < len(wrong_steps) else None
+            right = right_steps[i] if i < len(right_steps) else None
+            if wrong != right:
+                comparison.append({
+                    'step_index': i + 1,
+                    'incorrect_step': wrong,
+                    'correct_step': right,
+                    'explanation': self._explain_step_difference(wrong, right)
+                })
+        return comparison
+
+    def _explain_step_difference(self, wrong: str, right: str) -> str:
+        """
+        Provide a simple explanation of the difference between two steps.
+        """
+        if wrong is None and right:
+            return 'The incorrect model skipped this step: Present in the correct model.'
+        elif right is None and wrong:
+            return 'The correct model skipped this step: Present in the incorrect model.'
+        elif wrong and right:
+            return f"In incorrect model: '{wrong}' | In correct model: '{right}'"
+        else:
+            return 'Steps are different.' 
