@@ -14,24 +14,24 @@ class ModelEvaluator:
         self.perplexity = PerplexityModel()
         self.results_dir = "results"
         
-        # Sonuçlar için klasör oluştur
+        # Create a folder for results
         if not os.path.exists(self.results_dir):
             os.makedirs(self.results_dir)
 
     def evaluate_problem(self, problem_text, correct_solution):
         """
-        Bir problemi tüm modeller için değerlendirir.
+        Evaluates a problem for all models.
         
         Args:
-            problem_text (str): Değerlendirilecek problem
-            correct_solution (str): Doğru çözüm
+            problem_text (str): The problem to be evaluated
+            correct_solution (str): The correct solution
             
         Returns:
-            dict: Her model için değerlendirme sonuçları
+            dict: Evaluation results for each model
         """
         results = {}
         
-        # Her model için problemi çöz
+        # Solve the problem for each model
         for model_name, model in [
             ("ChatGPT", self.chatgpt),
             ("Gemini", self.gemini),
@@ -46,49 +46,49 @@ class ModelEvaluator:
                         "correct_solution": correct_solution
                     }
             except Exception as e:
-                print(f"{model_name} değerlendirme hatası: {str(e)}")
+                print(f"{model_name} evaluation error: {str(e)}")
                 results[model_name] = None
         
         return results
 
     def evaluate_dataset(self, category):
         """
-        Belirli bir kategorideki tüm problemleri değerlendirir.
+        Evaluates all problems in a specific category.
         
         Args:
-            category (str): Değerlendirilecek kategori
+            category (str): The category to be evaluated
         """
         try:
-            # Kategori veri setini oku
+            # Read the category dataset
             df = pd.read_csv(f"data/{category.lower().replace(' ', '_')}.csv")
             
-            # Sonuçları saklamak için liste
+            # List to store results
             all_results = []
             
-            # Her problemi değerlendir
-            for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Değerlendiriliyor: {category}"):
+            # Evaluate each problem
+            for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Evaluating: {category}"):
                 results = self.evaluate_problem(row['problem_text'], row['solution'])
                 all_results.append({
                     "problem": row['problem_text'],
                     "results": results
                 })
             
-            # Sonuçları kaydet
+            # Save results
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file = os.path.join(self.results_dir, f"{category}_{timestamp}.json")
             
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(all_results, f, ensure_ascii=False, indent=2)
             
-            print(f"Değerlendirme sonuçları kaydedildi: {output_file}")
+            print(f"Evaluation results saved: {output_file}")
             
         except Exception as e:
-            print(f"Veri seti değerlendirme hatası: {str(e)}")
+            print(f"Dataset evaluation error: {str(e)}")
 
 def main():
     evaluator = ModelEvaluator()
     
-    # Tüm kategorileri değerlendir
+    # Evaluate all categories
     data_dir = "data"
     for file in os.listdir(data_dir):
         if file.endswith(".csv"):

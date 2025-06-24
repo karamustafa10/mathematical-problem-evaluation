@@ -6,91 +6,91 @@ from pathlib import Path
 
 def setup_kaggle_credentials():
     """
-    Kaggle API kimlik bilgilerini ayarlar.
+    Sets up Kaggle API credentials.
     """
     try:
-        # Kaggle.json dosyasının yolunu belirle
+        # Determine the path of kaggle.json file
         kaggle_json_path = Path("evraklar/kaggle.json")
         
         if not kaggle_json_path.exists():
-            raise FileNotFoundError("kaggle.json dosyası bulunamadı!")
+            raise FileNotFoundError("kaggle.json file not found!")
         
-        # Kaggle.json dosyasını oku
+        # Read the kaggle.json file
         with open(kaggle_json_path, 'r') as f:
             credentials = json.load(f)
         
-        # Kaggle API kimlik bilgilerini ayarla
+        # Set Kaggle API credentials
         os.environ['KAGGLE_USERNAME'] = credentials['username']
         os.environ['KAGGLE_KEY'] = credentials['key']
         
-        print("Kaggle kimlik bilgileri başarıyla ayarlandı.")
+        print("Kaggle credentials set successfully.")
         
     except Exception as e:
-        print(f"Kaggle kimlik bilgileri ayarlama hatası: {str(e)}")
+        print(f"Error setting Kaggle credentials: {str(e)}")
         raise
 
 def download_dataset():
     """
-    Kaggle'dan AMC 8 veri setini indirir ve işler.
+    Downloads and processes the AMC 8 dataset from Kaggle.
     """
     try:
-        # Kaggle kimlik bilgilerini ayarla
+        # Set Kaggle credentials
         setup_kaggle_credentials()
         
-        print("Veri seti indiriliyor...")
+        print("Downloading dataset...")
         
-        # Veri setini indir
+        # Download the dataset
         dataset = "alexryzhkov/amio-parsed-art-of-problem-solving-website"
         kaggle.api.dataset_download_files(dataset, path="data", unzip=True)
         
-        print("Veri seti başarıyla indirildi.")
+        print("Dataset downloaded successfully.")
         
-        # Veri setini oku
+        # Read the dataset
         df = pd.read_csv("data/parsed_ArtOfProblemSolving.csv")
         
-        print("\nVeri seti önizlemesi:")
+        print("\nDataset preview:")
         print(df.head())
         
-        print("\nSütun isimleri:")
+        print("\nColumn names:")
         print(df.columns.tolist())
         
-        # Veri setini işle
+        # Process the dataset
         process_dataset(df)
         
     except Exception as e:
-        print(f"Veri seti indirme hatası: {str(e)}")
+        print(f"Error downloading dataset: {str(e)}")
 
 def process_dataset(df):
     """
-    İndirilen veri setini işler ve kategorilere ayırır.
+    Processes the downloaded dataset and splits it into categories.
     
     Args:
-        df (pandas.DataFrame): İndirilen veri seti
+        df (pandas.DataFrame): The downloaded dataset
     """
     try:
-        # Sütun isimlerini kontrol et ve gerekli sütunları seç
+        # Check column names and select required columns
         required_columns = ['problem_id', 'link', 'problem', 'solution', 'letter', 'answer']
         
         if not all(col in df.columns for col in required_columns):
-            raise ValueError(f"Veri setinde gerekli sütunlar bulunamadı. Mevcut sütunlar: {df.columns.tolist()}")
+            raise ValueError(f"Required columns not found in the dataset. Available columns: {df.columns.tolist()}")
         
-        # Gerekli sütunları seç
+        # Select required columns
         df = df[required_columns]
         
-        # Kategorilere göre grupla (problem_id'ye göre)
+        # Group by categories (by problem_id)
         categories = df['problem_id'].unique()
         
-        # Her kategori için ayrı dosya oluştur
+        # Create a separate file for each category
         for category in categories:
             category_df = df[df['problem_id'] == category]
             output_path = f"data/problem_{category}.csv"
             category_df.to_csv(output_path, index=False)
-            print(f"Problem kaydedildi: {category} -> {output_path}")
+            print(f"Problem saved: {category} -> {output_path}")
         
-        print("\nVeri seti başarıyla işlendi ve problemlere ayrıldı.")
+        print("\nDataset processed and split into problems successfully.")
         
     except Exception as e:
-        print(f"Veri seti işleme hatası: {str(e)}")
+        print(f"Error processing dataset: {str(e)}")
 
 if __name__ == "__main__":
     download_dataset() 

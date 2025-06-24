@@ -77,7 +77,7 @@ class ProblemEvaluator:
                 self.logger.info(f"Evaluating {model_name}'s response")
                 
                 predicted_category = None
-                # Eğer response bir dict ise, çözüm ve kategori ayrıştır
+                # If response is a dict, separate solution and category
                 if isinstance(response, dict):
                     solution = response.get('solution', None)
                     predicted_category = response.get('category', None)

@@ -88,7 +88,7 @@ class MathProblemEvaluator:
                     logger.error(f"Error with {model_name}: {str(e)}")
                     model_responses[model_name] = None
                     model_categories[model_name] = None
-            # Model kategorilerini problem sözlüğüne ekle
+            # Add model categories to the problem dictionary
             problem['model_categories'] = model_categories
             # Evaluate responses and save results
             evaluation_results = self.evaluator.evaluate_responses(problem, model_responses)
